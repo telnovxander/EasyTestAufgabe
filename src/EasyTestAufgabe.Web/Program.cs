@@ -1,10 +1,19 @@
+using EasyTestAufgabe.Infrastructure.Persistence;
 using EasyTestAufgabe.Web.Components;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// EF Core / SQLite
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Data Source=app.db";
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connectionString));
 
 var app = builder.Build();
 
@@ -20,9 +29,16 @@ app.UseHttpsRedirection();
 
 
 app.UseAntiforgery();
-
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+// Migration + Seed beim Start
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+    await DbSeeder.SeedAsync(db);
+}
+
 
 app.Run();
