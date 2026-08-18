@@ -1,0 +1,205 @@
+﻿@page "/projects/{ProjectId:int}/tasks/{TaskId:int}/time"
+@inject ITaskService TaskService
+@inject ITimeEntryService TimeEntryService
+
+<PageTitle>Zeiterfassung — EasyTestAufgabe</PageTitle>
+
+<div class="breadcrumb">
+    <a href="/projects/@ProjectId/tasks">← Zurück zu den Aufgaben</a>
+</div>
+
+@if (isLoading)
+{
+    <p>Lade...</p>
+}
+else if (task is null)
+{
+    <p class="form-error">Aufgabe wurde nicht gefunden.</p>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1>@task.Title</h1>
+            <p class="page-subtitle">
+                <span class="status-badge status-@task.Status">@task.Status.ToDisplayText()</span>
+                <span class="priority-badge priority-@task.Priority">@task.Priority.ToDisplayText()</span>
+                · Gesamt: @FormatMinutes(entries.Sum(e => e.DurationMinutes))
+            </p>
+        </div>
+        <button class="btn btn-primary" @onclick="OpenCreateForm">+ Zeit erfassen</button>
+    </div>
+
+    @if (!entries.Any())
+    {
+        <p class="empty-state">Noch keine Zeiteinträge erfasst.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Dauer</th>
+                    <th>Notiz</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in entries)
+                {
+                    <tr>
+                        <td>@entry.Date.ToString("dd.MM.yyyy")</td>
+                        <td>@FormatMinutes(entry.DurationMinutes)</td>
+                        <td>@entry.Note</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-link btn-danger-link" @onclick="() => RequestDelete(entry)">Löschen</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (!string.IsNullOrEmpty(loadError))
+{
+    <p class="form-error">@loadError</p>
+}
+
+<FormModal TModel="TimeEntryFormModel"
+           @ref="formModal"
+           IsOpen="isFormOpen"
+           Model="formModel"
+           Title="Zeit erfassen"
+           OnSave="HandleSave"
+           OnClose="CloseForm">
+    <ChildContent Context="model">
+        <div class="form-group">
+            <label for="entryDate">Datum</label>
+            <InputDate id="entryDate" class="form-control" @bind-Value="model.Date" />
+        </div>
+
+        <div class="form-group">
+            <label for="entryDuration">Dauer (Minuten)</label>
+            <InputNumber id="entryDuration" class="form-control" @bind-Value="model.DurationMinutes" />
+        </div>
+
+        <div class="form-group">
+            <label for="entryNote">Notiz</label>
+            <InputTextArea id="entryNote" class="form-control" rows="2" @bind-Value="model.Note" />
+        </div>
+    </ChildContent>
+</FormModal>
+
+<ConfirmDialog IsOpen="isConfirmOpen"
+               Title="Zeiteintrag löschen"
+               Message="Diesen Zeiteintrag wirklich löschen?"
+               ConfirmText="Löschen"
+               OnConfirm="HandleDeleteConfirmed"
+               OnCancel="CancelDelete" />
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public int TaskId { get; set; }
+
+    private TaskListItemDto? task;
+    private List<TimeEntryDto> entries = new();
+    private bool isLoading = true;
+    private string? loadError;
+
+    private bool isFormOpen;
+    private TimeEntryFormModel? formModel;
+    private FormModal<TimeEntryFormModel>? formModal;
+
+    private bool isConfirmOpen;
+    private int? pendingDeleteId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+
+        var taskResult = await TaskService.GetByIdAsync(TaskId);
+        if (!taskResult.IsSuccess)
+        {
+            task = null;
+            loadError = taskResult.Error;
+            isLoading = false;
+            return;
+        }
+
+        task = taskResult.Value;
+
+        var entriesResult = await TimeEntryService.GetByTaskIdAsync(TaskId);
+        entries = entriesResult.IsSuccess ? entriesResult.Value! : new List<TimeEntryDto>();
+        loadError = entriesResult.IsSuccess ? null : entriesResult.Error;
+
+        isLoading = false;
+    }
+
+    private void OpenCreateForm()
+    {
+        formModel = new TimeEntryFormModel { TaskItemId = TaskId };
+        isFormOpen = true;
+    }
+
+    private void CloseForm()
+    {
+        isFormOpen = false;
+        formModel = null;
+    }
+
+    private async Task HandleSave(TimeEntryFormModel model)
+    {
+        var result = await TimeEntryService.CreateAsync(
+            new CreateTimeEntryRequest(model.TaskItemId, model.Date, model.DurationMinutes, model.Note));
+
+        if (result.IsSuccess)
+        {
+            CloseForm();
+            await LoadAsync();
+        }
+        else
+        {
+            formModal?.SetServerError(result.Error ?? "Unbekannter Fehler.");
+        }
+    }
+
+    private void RequestDelete(TimeEntryDto entry)
+    {
+        pendingDeleteId = entry.Id;
+        isConfirmOpen = true;
+    }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (pendingDeleteId is null)
+        {
+            return;
+        }
+
+        var result = await TimeEntryService.DeleteAsync(pendingDeleteId.Value);
+        isConfirmOpen = false;
+        pendingDeleteId = null;
+
+        if (result.IsSuccess)
+        {
+            await LoadAsync();
+        }
+        else
+        {
+            loadError = result.Error;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        isConfirmOpen = false;
+        pendingDeleteId = null;
+    }
+}
