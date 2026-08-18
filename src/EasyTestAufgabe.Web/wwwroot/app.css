@@ -222,3 +222,57 @@ body {
     gap: 0.5rem;
     margin-top: 1.5rem;
 }
+
+.breadcrumb {
+    margin-bottom: 1rem;
+}
+
+    .breadcrumb a {
+        color: var(--easy-primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+.page-subtitle {
+    color: #666;
+    margin: 0.25rem 0 0;
+}
+
+.task-description {
+    font-size: 0.85rem;
+    color: #777;
+    margin-top: 0.2rem;
+}
+
+.priority-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+}
+
+.priority-Low {
+    background-color: #7f9c96;
+}
+
+.priority-Medium {
+    background-color: #d99a2b;
+}
+
+.priority-High {
+    background-color: #c0392b;
+}
+
+.status-Open {
+    background-color: #8e8e8e;
+}
+
+.status-InProgress {
+    background-color: #d99a2b;
+}
+
+.status-Done {
+    background-color: #2e8b57;
+}

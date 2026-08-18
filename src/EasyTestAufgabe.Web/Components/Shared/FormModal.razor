@@ -1,32 +1,16 @@
-﻿@if (IsOpen && Model is not null)
+﻿@typeparam TModel
+
+@if (IsOpen && Model is not null)
 {
     <div class="modal-backdrop" @onclick="Cancel">
         <div class="modal-card" @onclick:stopPropagation="true">
-            <h3>@(Model.IsEditMode ? "Projekt bearbeiten" : "Neues Projekt")</h3>
+            <h3>@Title</h3>
 
             <EditForm Model="Model" OnValidSubmit="Submit">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
-                <div class="form-group">
-                    <label for="projectName">Name</label>
-                    <InputText id="projectName" class="form-control" @bind-Value="Model.Name" />
-                </div>
-
-                <div class="form-group">
-                    <label for="projectClient">Kunde</label>
-                    <InputText id="projectClient" class="form-control" @bind-Value="Model.Client" />
-                </div>
-
-                <div class="form-group">
-                    <label for="projectStatus">Status</label>
-                    <InputSelect id="projectStatus" class="form-control" @bind-Value="Model.Status">
-                        @foreach (var status in Enum.GetValues<ProjectStatus>())
-                        {
-                            <option value="@status">@status.ToDisplayText()</option>
-                        }
-                    </InputSelect>
-                </div>
+                @ChildContent(Model)
 
                 @if (!string.IsNullOrEmpty(ServerError))
                 {
@@ -44,9 +28,11 @@
 
 @code {
     [Parameter] public bool IsOpen { get; set; }
-    [Parameter] public ProjectFormModel? Model { get; set; }
+    [Parameter] public TModel? Model { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public RenderFragment<TModel>? ChildContent { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public EventCallback<ProjectFormModel> OnSave { get; set; }
+    [Parameter] public EventCallback<TModel> OnSave { get; set; }
 
     private string? ServerError { get; set; }
 

@@ -1,0 +1,246 @@
+﻿@page "/projects/{ProjectId:int}/tasks"
+@inject IProjectService ProjectService
+@inject ITaskService TaskService
+
+<PageTitle>Aufgaben — EasyTestAufgabe</PageTitle>
+
+<div class="breadcrumb">
+    <a href="/">← Zurück zu Projekten</a>
+</div>
+
+@if (isLoading)
+{
+    <p>Lade...</p>
+}
+else if (project is null)
+{
+    <p class="form-error">Projekt wurde nicht gefunden.</p>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1>@project.Name</h1>
+            <p class="page-subtitle">
+                @project.Client · <span class="status-badge status-@project.Status">@project.Status.ToDisplayText()</span>
+            </p>
+        </div>
+        <button class="btn btn-primary" @onclick="OpenCreateForm">+ Neue Aufgabe</button>
+    </div>
+
+    @if (!allTasks.Any())
+    {
+        <p class="empty-state">Noch keine Aufgaben in diesem Projekt.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Titel</th>
+                    <th>Status</th>
+                    <th>Priorität</th>
+                    <th>Zeit erfasst</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in allTasks)
+                {
+                    <tr>
+                        <td>
+                            <a href="/projects/@ProjectId/tasks/@task.Id/time">@task.Title</a>
+                            @if (!string.IsNullOrWhiteSpace(task.Description))
+                            {
+                                <div class="task-description">@task.Description</div>
+                            }
+                        </td>
+                        <td><span class="status-badge status-@task.Status">@task.Status.ToDisplayText()</span></td>
+                        <td><span class="priority-badge priority-@task.Priority">@task.Priority.ToDisplayText()</span></td>
+                        <td>@FormatMinutes(task.TotalTimeMinutes)</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-link" @onclick="() => OpenEditForm(task)">Bearbeiten</button>
+                            <button class="btn btn-link btn-danger-link" @onclick="() => RequestDelete(task)">Löschen</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (!string.IsNullOrEmpty(loadError))
+{
+    <p class="form-error">@loadError</p>
+}
+
+<FormModal TModel="TaskFormModel"
+           @ref="formModal"
+           IsOpen="isFormOpen"
+           Model="formModel"
+           Title="@(formModel?.IsEditMode == true ? "Aufgabe bearbeiten" : "Neue Aufgabe")"
+           OnSave="HandleSave"
+           OnClose="CloseForm">
+    <ChildContent Context="model">
+        <div class="form-group">
+            <label for="taskTitle">Titel</label>
+            <InputText id="taskTitle" class="form-control" @bind-Value="model.Title" />
+        </div>
+
+        <div class="form-group">
+            <label for="taskDescription">Beschreibung</label>
+            <InputTextArea id="taskDescription" class="form-control" rows="3" @bind-Value="model.Description" />
+        </div>
+
+        @if (model.IsEditMode)
+        {
+            <div class="form-group">
+                <label for="taskStatus">Status</label>
+                <InputSelect id="taskStatus" class="form-control" @bind-Value="model.Status">
+                    @foreach (var status in Enum.GetValues<TaskItemStatus>())
+                    {
+                        <option value="@status">@status.ToDisplayText()</option>
+                    }
+                </InputSelect>
+            </div>
+        }
+
+        <div class="form-group">
+            <label for="taskPriority">Priorität</label>
+            <InputSelect id="taskPriority" class="form-control" @bind-Value="model.Priority">
+                @foreach (var priority in Enum.GetValues<TaskPriority>())
+                {
+                    <option value="@priority">@priority.ToDisplayText()</option>
+                }
+            </InputSelect>
+        </div>
+    </ChildContent>
+</FormModal>
+
+<ConfirmDialog IsOpen="isConfirmOpen"
+               Title="Aufgabe löschen"
+               Message="@confirmMessage"
+               ConfirmText="Löschen"
+               OnConfirm="HandleDeleteConfirmed"
+               OnCancel="CancelDelete" />
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    private ProjectListItemDto? project;
+    private List<TaskListItemDto> allTasks = new();
+    private bool isLoading = true;
+    private string? loadError;
+
+    private bool isFormOpen;
+    private TaskFormModel? formModel;
+    private FormModal<TaskFormModel>? formModal;
+
+    private bool isConfirmOpen;
+    private string confirmMessage = string.Empty;
+    private int? pendingDeleteId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+
+        var projectResult = await ProjectService.GetByIdAsync(ProjectId);
+        if (!projectResult.IsSuccess)
+        {
+            project = null;
+            loadError = projectResult.Error;
+            isLoading = false;
+            return;
+        }
+
+        project = projectResult.Value;
+
+        var tasksResult = await TaskService.GetByProjectIdAsync(ProjectId);
+        allTasks = tasksResult.IsSuccess ? tasksResult.Value! : new List<TaskListItemDto>();
+        loadError = tasksResult.IsSuccess ? null : tasksResult.Error;
+
+        isLoading = false;
+    }
+
+    private void OpenCreateForm()
+    {
+        formModel = new TaskFormModel { ProjectId = ProjectId };
+        isFormOpen = true;
+    }
+
+    private void OpenEditForm(TaskListItemDto task)
+    {
+        formModel = new TaskFormModel
+        {
+            Id = task.Id,
+            ProjectId = ProjectId,
+            Title = task.Title,
+            Description = task.Description,
+            Status = task.Status,
+            Priority = task.Priority
+        };
+        isFormOpen = true;
+    }
+
+    private void CloseForm()
+    {
+        isFormOpen = false;
+        formModel = null;
+    }
+
+    private async Task HandleSave(TaskFormModel model)
+    {
+        var result = model.IsEditMode
+            ? await TaskService.UpdateAsync(new UpdateTaskRequest(model.Id!.Value, model.Title, model.Description, model.Status, model.Priority))
+            : await TaskService.CreateAsync(new CreateTaskRequest(model.ProjectId, model.Title, model.Description, model.Priority));
+
+        if (result.IsSuccess)
+        {
+            CloseForm();
+            await LoadAsync();
+        }
+        else
+        {
+            formModal?.SetServerError(result.Error ?? "Unbekannter Fehler.");
+        }
+    }
+
+    private void RequestDelete(TaskListItemDto task)
+    {
+        pendingDeleteId = task.Id;
+        confirmMessage = $"Aufgabe \"{task.Title}\" inklusive aller Zeiteinträge wirklich löschen?";
+        isConfirmOpen = true;
+    }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (pendingDeleteId is null)
+        {
+            return;
+        }
+
+        var result = await TaskService.DeleteAsync(pendingDeleteId.Value);
+        isConfirmOpen = false;
+        pendingDeleteId = null;
+
+        if (result.IsSuccess)
+        {
+            await LoadAsync();
+        }
+        else
+        {
+            loadError = result.Error;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        isConfirmOpen = false;
+        pendingDeleteId = null;
+    }
+}
