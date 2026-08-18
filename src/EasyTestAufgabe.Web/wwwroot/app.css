@@ -36,3 +36,189 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+:root {
+    --easy-primary: #6a1b6f;
+    --easy-primary-dark: #4d1350;
+    --easy-danger: #c0392b;
+    --easy-border: #e0e0e0;
+    --easy-bg-light: #f7f5f8;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--easy-bg-light);
+    margin: 0;
+}
+
+.app-header {
+    background-color: var(--easy-primary-dark);
+    color: white;
+    padding: 1rem 2rem;
+}
+
+.app-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.app-main {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+    .data-table th,
+    .data-table td {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--easy-border);
+    }
+
+    .data-table thead th {
+        background-color: var(--easy-primary);
+        color: white;
+        font-weight: 600;
+    }
+
+    .data-table tbody tr:hover {
+        background-color: var(--easy-bg-light);
+    }
+
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+}
+
+.status-Planned {
+    background-color: #8e8e8e;
+}
+
+.status-Active {
+    background-color: #2e8b57;
+}
+
+.status-OnHold {
+    background-color: #d99a2b;
+}
+
+.status-Completed {
+    background-color: #3a5fcd;
+}
+
+.btn {
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background-color: var(--easy-primary);
+    color: white;
+}
+
+    .btn-primary:hover {
+        background-color: var(--easy-primary-dark);
+    }
+
+.btn-secondary {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.btn-danger {
+    background-color: var(--easy-danger);
+    color: white;
+}
+
+.btn-link {
+    background: none;
+    color: var(--easy-primary);
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-danger-link {
+    color: var(--easy-danger);
+}
+
+.actions-cell {
+    white-space: nowrap;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--easy-border);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form-error {
+    color: var(--easy-danger);
+    font-weight: 600;
+}
+
+.empty-state {
+    color: #777;
+    font-style: italic;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modal-card-small {
+    max-width: 360px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}

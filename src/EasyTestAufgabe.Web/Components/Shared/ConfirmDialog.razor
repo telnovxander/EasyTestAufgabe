@@ -1,0 +1,26 @@
+﻿@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="Cancel">
+        <div class="modal-card modal-card-small" @onclick:stopPropagation="true">
+            <h3>@Title</h3>
+            <p>@Message</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Abbrechen</button>
+                <button type="button" class="btn btn-danger" @onclick="Confirm">@ConfirmText</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string Title { get; set; } = "Bestätigen";
+    [Parameter] public string Message { get; set; } = "Bist du sicher?";
+    [Parameter] public string ConfirmText { get; set; } = "Löschen";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private Task Confirm() => OnConfirm.InvokeAsync();
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+}

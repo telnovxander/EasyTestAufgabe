@@ -1,0 +1,74 @@
+﻿@if (IsOpen && Model is not null)
+{
+    <div class="modal-backdrop" @onclick="Cancel">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <h3>@(Model.IsEditMode ? "Projekt bearbeiten" : "Neues Projekt")</h3>
+
+            <EditForm Model="Model" OnValidSubmit="Submit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-group">
+                    <label for="projectName">Name</label>
+                    <InputText id="projectName" class="form-control" @bind-Value="Model.Name" />
+                </div>
+
+                <div class="form-group">
+                    <label for="projectClient">Kunde</label>
+                    <InputText id="projectClient" class="form-control" @bind-Value="Model.Client" />
+                </div>
+
+                <div class="form-group">
+                    <label for="projectStatus">Status</label>
+                    <InputSelect id="projectStatus" class="form-control" @bind-Value="Model.Status">
+                        @foreach (var status in Enum.GetValues<ProjectStatus>())
+                        {
+                            <option value="@status">@status.ToDisplayText()</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                @if (!string.IsNullOrEmpty(ServerError))
+                {
+                    <p class="form-error">@ServerError</p>
+                }
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public ProjectFormModel? Model { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<ProjectFormModel> OnSave { get; set; }
+
+    private string? ServerError { get; set; }
+
+    private async Task Submit()
+    {
+        ServerError = null;
+        await OnSave.InvokeAsync(Model);
+    }
+
+    private async Task Cancel()
+    {
+        ServerError = null;
+        await OnClose.InvokeAsync();
+    }
+
+    /// <summary>
+    /// Wird von der Elternkomponente aufgerufen, um einen serverseitigen
+    /// Fehler (aus dem Application-Service) im Formular anzuzeigen.
+    /// </summary>
+    public void SetServerError(string message)
+    {
+        ServerError = message;
+        StateHasChanged();
+    }
+}

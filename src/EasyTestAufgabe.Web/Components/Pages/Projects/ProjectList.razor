@@ -1,0 +1,187 @@
+﻿@page "/"
+@page "/projects"
+@inject IProjectService ProjectService
+
+<PageTitle>Projekte — EasyTestAufgabe</PageTitle>
+
+<div class="page-header">
+    <h1>Projekte</h1>
+    <button class="btn btn-primary" @onclick="OpenCreateForm">+ Neues Projekt</button>
+</div>
+
+@if (isLoading)
+{
+    <p>Lade Projekte...</p>
+}
+else if (!projects.Any())
+{
+    <p class="empty-state">Noch keine Projekte vorhanden. Lege dein erstes Projekt an.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Kunde</th>
+                <th>Status</th>
+                <th>Gesamtzeit</th>
+                <th>Aufgaben offen / erledigt</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var project in projects)
+            {
+                <tr>
+                    <td>@project.Name</td>
+                    <td>@project.Client</td>
+                    <td><span class="status-badge status-@project.Status">@project.Status.ToDisplayText()</span></td>
+                    <td>@FormatMinutes(project.TotalTimeMinutes)</td>
+                    <td>@project.OpenTasksCount / @project.DoneTasksCount</td>
+                    <td class="actions-cell">
+                        <button class="btn btn-link" @onclick="() => OpenEditForm(project)">Bearbeiten</button>
+                        <button class="btn btn-link btn-danger-link" @onclick="() => RequestDelete(project)">Löschen</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(loadError))
+{
+    <p class="form-error">@loadError</p>
+}
+
+<ProjectFormModal @ref="formModal"
+                  IsOpen="isFormOpen"
+                  Model="formModel"
+                  OnSave="HandleSave"
+                  OnClose="CloseForm" />
+
+<ConfirmDialog IsOpen="isConfirmOpen"
+               Title="Projekt löschen"
+               Message="@confirmMessage"
+               ConfirmText="Löschen"
+               OnConfirm="HandleDeleteConfirmed"
+               OnCancel="CancelDelete" />
+
+@code {
+    private List<ProjectListItemDto> projects = new();
+    private bool isLoading = true;
+    private string? loadError;
+
+    private bool isFormOpen;
+    private ProjectFormModel? formModel;
+    private ProjectFormModal? formModal;
+
+    private bool isConfirmOpen;
+    private string confirmMessage = string.Empty;
+    private int? pendingDeleteId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjectsAsync();
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        isLoading = true;
+        var result = await ProjectService.GetAllAsync();
+
+        if (result.IsSuccess)
+        {
+            projects = result.Value!;
+            loadError = null;
+        }
+        else
+        {
+            loadError = result.Error;
+        }
+
+        isLoading = false;
+    }
+
+    private void OpenCreateForm()
+    {
+        formModel = new ProjectFormModel();
+        isFormOpen = true;
+    }
+
+    private void OpenEditForm(ProjectListItemDto project)
+    {
+        formModel = new ProjectFormModel
+        {
+            Id = project.Id,
+            Name = project.Name,
+            Client = project.Client,
+            Status = project.Status
+        };
+        isFormOpen = true;
+    }
+
+    private void CloseForm()
+    {
+        isFormOpen = false;
+        formModel = null;
+    }
+
+    private async Task HandleSave(ProjectFormModel model)
+    {
+        var result = model.IsEditMode
+            ? await ProjectService.UpdateAsync(new UpdateProjectRequest(model.Id!.Value, model.Name, model.Client, model.Status))
+            : await ProjectService.CreateAsync(new CreateProjectRequest(model.Name, model.Client, model.Status));
+
+        if (result.IsSuccess)
+        {
+            CloseForm();
+            await LoadProjectsAsync();
+        }
+        else
+        {
+            formModal?.SetServerError(result.Error ?? "Unbekannter Fehler.");
+        }
+    }
+
+    private void RequestDelete(ProjectListItemDto project)
+    {
+        pendingDeleteId = project.Id;
+        confirmMessage = $"Projekt \"{project.Name}\" inklusive aller Aufgaben und Zeiteinträge wirklich löschen?";
+        isConfirmOpen = true;
+    }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (pendingDeleteId is null)
+        {
+            return;
+        }
+
+        var result = await ProjectService.DeleteAsync(pendingDeleteId.Value);
+        isConfirmOpen = false;
+        pendingDeleteId = null;
+
+        if (result.IsSuccess)
+        {
+            await LoadProjectsAsync();
+        }
+        else
+        {
+            loadError = result.Error;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        isConfirmOpen = false;
+        pendingDeleteId = null;
+    }
+
+    private static string FormatMinutes(int totalMinutes)
+    {
+        var hours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+        return hours > 0 ? $"{hours} Std. {minutes} Min." : $"{minutes} Min.";
+    }
+}
