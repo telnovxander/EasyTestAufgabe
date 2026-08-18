@@ -28,9 +28,25 @@ else
         <button class="btn btn-primary" @onclick="OpenCreateForm">+ Neue Aufgabe</button>
     </div>
 
-    @if (!allTasks.Any())
+    <div class="filter-bar">
+        <select class="form-control filter-select" @bind="filterStatusString">
+            <option value="">Alle Status</option>
+            <option value="Open">Offen</option>
+            <option value="InProgress">In Arbeit</option>
+            <option value="Done">Erledigt</option>
+        </select>
+        <input type="text"
+               class="form-control filter-search"
+               placeholder="Suche nach Titel oder Beschreibung..."
+               @bind="searchText"
+               @bind:event="oninput" />
+    </div>
+
+    @if (!FilteredTasks.Any())
     {
-        <p class="empty-state">Noch keine Aufgaben in diesem Projekt.</p>
+        <p class="empty-state">
+            @(allTasks.Any() ? "Keine Aufgaben entsprechen dem Filter." : "Noch keine Aufgaben in diesem Projekt.")
+        </p>
     }
     else
     {
@@ -45,11 +61,11 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var task in allTasks)
+                @foreach (var task in FilteredTasks)
                 {
                     <tr>
                         <td>
-                            <a href="/projects/@ProjectId/tasks/@task.Id/time">@task.Title</a>
+                            <a href="/projects/@ProjectId/tasks/@task.Id/time" class="row-link">@task.Title</a>
                             @if (!string.IsNullOrWhiteSpace(task.Description))
                             {
                                 <div class="task-description">@task.Description</div>
@@ -139,6 +155,21 @@ else
     private bool isConfirmOpen;
     private string confirmMessage = string.Empty;
     private int? pendingDeleteId;
+
+    private string searchText = string.Empty;
+    private TaskItemStatus? filterStatus;
+
+    private string filterStatusString
+    {
+        get => filterStatus?.ToString() ?? string.Empty;
+        set => filterStatus = string.IsNullOrEmpty(value) ? null : Enum.Parse<TaskItemStatus>(value);
+    }
+
+    private IEnumerable<TaskListItemDto> FilteredTasks => allTasks
+        .Where(t => filterStatus is null || t.Status == filterStatus)
+        .Where(t => string.IsNullOrWhiteSpace(searchText)
+            || t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+            || (t.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
 
     protected override async Task OnInitializedAsync()
     {

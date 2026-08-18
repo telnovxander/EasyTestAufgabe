@@ -34,7 +34,7 @@ else
             @foreach (var project in projects)
             {
                 <tr>
-                    <td><a href="/projects/@project.Id/tasks">@project.Name</a></td>
+                    <td><a href="/projects/@project.Id/tasks" class="row-link">@project.Name</a></td>
                     <td>@project.Client</td>
                     <td><span class="status-badge status-@project.Status">@project.Status.ToDisplayText()</span></td>
                     <td>@FormatMinutes(project.TotalTimeMinutes)</td>

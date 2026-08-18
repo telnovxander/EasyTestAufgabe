@@ -2,7 +2,7 @@
 
 @if (IsOpen && Model is not null)
 {
-    <div class="modal-backdrop" @onclick="Cancel">
+    <div class="modal-backdrop" >
         <div class="modal-card" @onclick:stopPropagation="true">
             <h3>@Title</h3>
 
