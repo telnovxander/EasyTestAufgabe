@@ -1,3 +1,5 @@
+using EasyTestAufgabe.Application.Abstractions;
+using EasyTestAufgabe.Application.Services;
 using EasyTestAufgabe.Infrastructure.Persistence;
 using EasyTestAufgabe.Web.Components;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +16,10 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
+
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 
 var app = builder.Build();
 
