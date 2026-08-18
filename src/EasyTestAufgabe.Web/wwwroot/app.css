@@ -394,3 +394,8 @@ h1 {
     word-break: break-word;
     margin-top: 1rem;
 }
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}

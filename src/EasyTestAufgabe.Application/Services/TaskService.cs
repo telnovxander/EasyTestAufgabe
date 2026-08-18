@@ -3,6 +3,7 @@ using EasyTestAufgabe.Application.Abstractions;
 using EasyTestAufgabe.Application.Common;
 using EasyTestAufgabe.Application.Dtos;
 using EasyTestAufgabe.Domain.Entities;
+using EasyTestAufgabe.Domain.Enums;
 using EasyTestAufgabe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -72,10 +73,10 @@ public class TaskService : ITaskService
             return Result<int>.Failure("Der Titel darf maximal 200 Zeichen lang sein.");
         }
 
-        var projectExists = await _context.Projects.AnyAsync(p => p.Id == request.ProjectId);
-        if (!projectExists)
+        var projectError = await ValidateProjectIsEditableAsync(request.ProjectId, "Aufgaben hinzufügen");
+        if (projectError is not null)
         {
-            return Result<int>.Failure($"Projekt mit Id {request.ProjectId} wurde nicht gefunden.");
+            return Result<int>.Failure(projectError);
         }
 
         var task = new TaskItem
@@ -107,6 +108,12 @@ public class TaskService : ITaskService
             return Result.Failure($"Aufgabe mit Id {request.Id} wurde nicht gefunden.");
         }
 
+        var projectError = await ValidateProjectIsEditableAsync(task.ProjectId, "Aufgaben bearbeiten");
+        if (projectError is not null)
+        {
+            return Result.Failure(projectError);
+        }
+
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
         task.Status = request.Status;
@@ -127,11 +134,40 @@ public class TaskService : ITaskService
             return Result.Failure($"Aufgabe mit Id {id} wurde nicht gefunden.");
         }
 
+        var projectError = await ValidateProjectIsEditableAsync(task.ProjectId, "Aufgaben löschen");
+        if (projectError is not null)
+        {
+            return Result.Failure(projectError);
+        }
+
         _context.Tasks.Remove(task);
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Aufgabe gelöscht: Id={TaskId}", id);
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Prüft, ob das übergeordnete Projekt Änderungen an seinen Aufgaben erlaubt.
+    /// Gibt null zurück, wenn alles in Ordnung ist, sonst eine Fehlermeldung.
+    /// Abgeschlossene Projekte ("Completed") sind gesperrt — Statusänderung
+    /// am Projekt selbst bleibt davon unberührt (läuft über ProjectService).
+    /// </summary>
+    private async Task<string?> ValidateProjectIsEditableAsync(int projectId, string action)
+    {
+        var status = await _context.Projects
+            .Where(p => p.Id == projectId)
+            .Select(p => (ProjectStatus?)p.Status)
+            .FirstOrDefaultAsync();
+
+        if (status is null)
+        {
+            return $"Projekt mit Id {projectId} wurde nicht gefunden.";
+        }
+
+        return status == ProjectStatus.Completed
+            ? $"Das Projekt ist abgeschlossen. {action} ist nicht mehr möglich."
+            : null;
     }
 }

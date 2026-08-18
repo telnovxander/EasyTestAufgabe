@@ -2,6 +2,7 @@
 using EasyTestAufgabe.Application.Common;
 using EasyTestAufgabe.Application.Dtos;
 using EasyTestAufgabe.Domain.Entities;
+using EasyTestAufgabe.Domain.Enums;
 using EasyTestAufgabe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -48,10 +49,10 @@ public class TimeEntryService : ITimeEntryService
             return Result<int>.Failure("Die Dauer muss grösser als 0 Minuten sein.");
         }
 
-        var taskExists = await _context.Tasks.AnyAsync(t => t.Id == request.TaskItemId);
-        if (!taskExists)
+        var projectError = await ValidateProjectIsEditableForTaskAsync(request.TaskItemId, "Zeit erfassen");
+        if (projectError is not null)
         {
-            return Result<int>.Failure($"Aufgabe mit Id {request.TaskItemId} wurde nicht gefunden.");
+            return Result<int>.Failure(projectError);
         }
 
         var entry = new TimeEntry
@@ -80,11 +81,39 @@ public class TimeEntryService : ITimeEntryService
             return Result.Failure($"Zeiteintrag mit Id {id} wurde nicht gefunden.");
         }
 
+        var projectError = await ValidateProjectIsEditableForTaskAsync(entry.TaskItemId, "Zeiteinträge löschen");
+        if (projectError is not null)
+        {
+            return Result.Failure(projectError);
+        }
+
         _context.TimeEntries.Remove(entry);
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Zeiteintrag gelöscht: Id={TimeEntryId}", id);
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Prüft über die Aufgabe hinweg den Status des übergeordneten Projekts.
+    /// "t.Project!.Status" wird von EF Core als SQL-JOIN übersetzt, kein
+    /// zusätzlicher Roundtrip zur Datenbank nötig.
+    /// </summary>
+    private async Task<string?> ValidateProjectIsEditableForTaskAsync(int taskItemId, string action)
+    {
+        var status = await _context.Tasks
+            .Where(t => t.Id == taskItemId)
+            .Select(t => (ProjectStatus?)t.Project!.Status)
+            .FirstOrDefaultAsync();
+
+        if (status is null)
+        {
+            return $"Aufgabe mit Id {taskItemId} wurde nicht gefunden.";
+        }
+
+        return status == ProjectStatus.Completed
+            ? $"Das Projekt ist abgeschlossen. {action} ist nicht mehr möglich."
+            : null;
     }
 }

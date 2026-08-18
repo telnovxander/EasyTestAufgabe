@@ -25,7 +25,12 @@ else
                 @project.Client · <span class="status-badge status-@project.Status">@project.Status.ToDisplayText()</span>
             </p>
         </div>
-        <button class="btn btn-primary" @onclick="OpenCreateForm">+ Neue Aufgabe</button>
+        <button class="btn btn-primary"
+                disabled="@IsProjectCompleted"
+                title="@(IsProjectCompleted ? "Projekt ist abgeschlossen" : null)"
+                @onclick="OpenCreateForm">
+            + Neue Aufgabe
+        </button>
     </div>
 
     <div class="filter-bar">
@@ -75,8 +80,18 @@ else
                         <td><span class="priority-badge priority-@task.Priority">@task.Priority.ToDisplayText()</span></td>
                         <td>@FormatMinutes(task.TotalTimeMinutes)</td>
                         <td class="actions-cell">
-                            <button class="btn btn-link" @onclick="() => OpenEditForm(task)">Bearbeiten</button>
-                            <button class="btn btn-link btn-danger-link" @onclick="() => RequestDelete(task)">Löschen</button>
+                            <button class="btn btn-link"
+                                    disabled="@IsProjectCompleted"
+                                    title="@(IsProjectCompleted ? "Projekt ist abgeschlossen" : null)"
+                                    @onclick="() => OpenEditForm(task)">
+                                Bearbeiten
+                            </button>
+                            <button class="btn btn-link btn-danger-link"
+                                    disabled="@IsProjectCompleted"
+                                    title="@(IsProjectCompleted ? "Projekt ist abgeschlossen" : null)"
+                                    @onclick="() => RequestDelete(task)">
+                                Löschen
+                            </button>
                         </td>
                     </tr>
                 }
@@ -158,6 +173,8 @@ else
 
     private string searchText = string.Empty;
     private TaskItemStatus? filterStatus;
+
+    private bool IsProjectCompleted => project?.Status == ProjectStatus.Completed;
 
     private string filterStatusString
     {

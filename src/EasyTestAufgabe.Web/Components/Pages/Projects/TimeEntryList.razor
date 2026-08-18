@@ -1,4 +1,5 @@
 ﻿@page "/projects/{ProjectId:int}/tasks/{TaskId:int}/time"
+@inject IProjectService ProjectService
 @inject ITaskService TaskService
 @inject ITimeEntryService TimeEntryService
 
@@ -27,7 +28,12 @@ else
                 · Gesamt: @FormatMinutes(entries.Sum(e => e.DurationMinutes))
             </p>
         </div>
-        <button class="btn btn-primary" @onclick="OpenCreateForm">+ Zeit erfassen</button>
+        <button class="btn btn-primary"
+                disabled="@IsProjectCompleted"
+                title="@(IsProjectCompleted ? "Projekt ist abgeschlossen" : null)"
+                @onclick="OpenCreateForm">
+            + Zeit erfassen
+        </button>
     </div>
 
     @if (!entries.Any())
@@ -53,7 +59,12 @@ else
                         <td>@FormatMinutes(entry.DurationMinutes)</td>
                         <td>@entry.Note</td>
                         <td class="actions-cell">
-                            <button class="btn btn-link btn-danger-link" @onclick="() => RequestDelete(entry)">Löschen</button>
+                            <button class="btn btn-link btn-danger-link"
+                                    disabled="@IsProjectCompleted"
+                                    title="@(IsProjectCompleted ? "Projekt ist abgeschlossen" : null)"
+                                    @onclick="() => RequestDelete(entry)">
+                                Löschen
+                            </button>
                         </td>
                     </tr>
                 }
@@ -103,6 +114,7 @@ else
     [Parameter] public int ProjectId { get; set; }
     [Parameter] public int TaskId { get; set; }
 
+    private ProjectListItemDto? project;
     private TaskListItemDto? task;
     private List<TimeEntryDto> entries = new();
     private bool isLoading = true;
@@ -115,6 +127,8 @@ else
     private bool isConfirmOpen;
     private int? pendingDeleteId;
 
+    private bool IsProjectCompleted => project?.Status == ProjectStatus.Completed;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
@@ -123,6 +137,9 @@ else
     private async Task LoadAsync()
     {
         isLoading = true;
+
+        var projectResult = await ProjectService.GetByIdAsync(ProjectId);
+        project = projectResult.IsSuccess ? projectResult.Value : null;
 
         var taskResult = await TaskService.GetByIdAsync(TaskId);
         if (!taskResult.IsSuccess)
