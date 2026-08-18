@@ -101,7 +101,10 @@ public class TaskService : ITaskService
         {
             return Result.Failure("Der Titel darf nicht leer sein.");
         }
-
+        if (request.Title.Trim().Length > 200)
+        {
+            return Result.Failure("Der Titel darf maximal 200 Zeichen lang sein.");
+        }
         var task = await _context.Tasks.FindAsync(request.Id);
         if (task is null)
         {

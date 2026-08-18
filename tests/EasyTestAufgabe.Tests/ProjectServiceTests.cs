@@ -20,10 +20,12 @@ public class ProjectServiceTests
         return new AppDbContext(options);
     }
 
+    private static ProjectService CreateService(AppDbContext context) =>
+        new(context, NullLogger<ProjectService>.Instance);
+
     [Fact]
     public async Task GetAllAsync_BerechnetGesamtzeitUndAufgabenzahlKorrekt()
     {
-        // Arrange
         await using var context = CreateContext();
 
         var project = new Project
@@ -58,15 +60,13 @@ public class ProjectServiceTests
         context.Projects.Add(project);
         await context.SaveChangesAsync();
 
-        var service = new ProjectService(context, NullLogger<ProjectService>.Instance);
+        var service = CreateService(context);
 
-        // Act
         var result = await service.GetAllAsync();
 
-        // Assert
         Assert.True(result.IsSuccess);
         var dto = Assert.Single(result.Value!);
-        Assert.Equal(105, dto.TotalTimeMinutes); // 60 + 30 + 15
+        Assert.Equal(105, dto.TotalTimeMinutes);
         Assert.Equal(1, dto.OpenTasksCount);
         Assert.Equal(1, dto.DoneTasksCount);
         Assert.Equal(2, dto.TotalTasksCount);
@@ -76,7 +76,7 @@ public class ProjectServiceTests
     public async Task CreateAsync_MitLeeremNamen_GibtFehlerZurueck()
     {
         await using var context = CreateContext();
-        var service = new ProjectService(context, NullLogger<ProjectService>.Instance);
+        var service = CreateService(context);
 
         var result = await service.CreateAsync(new CreateProjectRequest("   ", "Kunde AG", ProjectStatus.Planned));
 
@@ -88,7 +88,7 @@ public class ProjectServiceTests
     public async Task CreateAsync_MitGueltigenDaten_LegtProjektAn()
     {
         await using var context = CreateContext();
-        var service = new ProjectService(context, NullLogger<ProjectService>.Instance);
+        var service = CreateService(context);
 
         var result = await service.CreateAsync(new CreateProjectRequest("Neues Projekt", "Kunde AG", ProjectStatus.Planned));
 
@@ -101,7 +101,7 @@ public class ProjectServiceTests
     public async Task DeleteAsync_FuerNichtExistierendeId_GibtFehlerZurueck()
     {
         await using var context = CreateContext();
-        var service = new ProjectService(context, NullLogger<ProjectService>.Instance);
+        var service = CreateService(context);
 
         var result = await service.DeleteAsync(999);
 
