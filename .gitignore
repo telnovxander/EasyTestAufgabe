@@ -1,0 +1,28 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+
+## Rider / VS Code
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Publish
+publish/
+*.pubxml
+*.pubxml.user
+
+## SQLite 
+*.db
+*.db-shm
+*.db-wal
+
+## Logs
+logs/
+
+## OS
+.DS_Store
+Thumbs.db
