@@ -5,6 +5,7 @@ using EasyTestAufgabe.Application.Dtos;
 using EasyTestAufgabe.Domain.Entities;
 using EasyTestAufgabe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EasyTestAufgabe.Application.Services;
 
@@ -14,10 +15,12 @@ namespace EasyTestAufgabe.Application.Services;
 public class TaskService : ITaskService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<TaskService> _logger;
 
-    public TaskService(AppDbContext context)
+    public TaskService(AppDbContext context, ILogger<TaskService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     private static readonly Expression<Func<TaskItem, TaskListItemDto>> ToListItemDto = t => new TaskListItemDto
@@ -86,6 +89,8 @@ public class TaskService : ITaskService
         _context.Tasks.Add(task);
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("Aufgabe angelegt: Id={TaskId}, ProjectId={ProjectId}, Titel={Title}", task.Id, task.ProjectId, task.Title);
+
         return Result<int>.Success(task.Id);
     }
 
@@ -109,6 +114,8 @@ public class TaskService : ITaskService
 
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("Aufgabe aktualisiert: Id={TaskId}, Status={Status}", task.Id, task.Status);
+
         return Result.Success();
     }
 
@@ -122,6 +129,8 @@ public class TaskService : ITaskService
 
         _context.Tasks.Remove(task);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Aufgabe gelöscht: Id={TaskId}", id);
 
         return Result.Success();
     }

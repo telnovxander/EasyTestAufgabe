@@ -6,6 +6,7 @@ using EasyTestAufgabe.Domain.Entities;
 using EasyTestAufgabe.Domain.Enums;
 using EasyTestAufgabe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EasyTestAufgabe.Application.Services;
 
@@ -16,14 +17,14 @@ namespace EasyTestAufgabe.Application.Services;
 public class ProjectService : IProjectService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(AppDbContext context)
+    public ProjectService(AppDbContext context, ILogger<ProjectService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
-    // Als Expression (nicht als normale Methode!) definiert, damit EF Core
-    // die Aggregation in SQL übersetzen kann, statt alles im Speicher zu berechnen.
     private static readonly Expression<Func<Project, ProjectListItemDto>> ToListItemDto = p => new ProjectListItemDto
     {
         Id = p.Id,
@@ -78,6 +79,8 @@ public class ProjectService : IProjectService
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("Projekt angelegt: Id={ProjectId}, Name={ProjectName}", project.Id, project.Name);
+
         return Result<int>.Success(project.Id);
     }
 
@@ -101,6 +104,8 @@ public class ProjectService : IProjectService
 
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("Projekt aktualisiert: Id={ProjectId}, Name={ProjectName}", project.Id, project.Name);
+
         return Result.Success();
     }
 
@@ -116,6 +121,8 @@ public class ProjectService : IProjectService
         // alle zugehörigen Tasks und TimeEntries.
         _context.Projects.Remove(project);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Projekt gelöscht: Id={ProjectId}, Name={ProjectName}", id, project.Name);
 
         return Result.Success();
     }

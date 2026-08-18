@@ -1,0 +1,76 @@
+﻿@page "/logs"
+@inject IWebHostEnvironment Env
+
+<PageTitle>Logs — EasyTestAufgabe</PageTitle>
+
+<div class="breadcrumb">
+    <a href="/">← Zurück zur Übersicht</a>
+</div>
+
+<h1>Server-Logs</h1>
+<p class="page-subtitle">Zeigt die letzten @MaxLines Zeilen der aktuellen Logdatei (nur zu Demonstrationszwecken).</p>
+
+<button class="btn btn-secondary" @onclick="LoadLogs">Aktualisieren</button>
+
+@if (isLoading)
+{
+    <p>Lade...</p>
+}
+else if (logLines.Count == 0)
+{
+    <p class="empty-state">Keine Logeinträge gefunden.</p>
+}
+else
+{
+    <pre class="log-viewer">@string.Join(Environment.NewLine, logLines)</pre>
+}
+
+@code {
+    private const int MaxLines = 200;
+    private List<string> logLines = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        isLoading = true;
+        logLines = await Task.Run(ReadLastLogLines);
+        isLoading = false;
+    }
+
+    private List<string> ReadLastLogLines()
+    {
+        var logsDirectory = Path.Combine(Env.ContentRootPath, "logs");
+
+        if (!Directory.Exists(logsDirectory))
+        {
+            return new List<string>();
+        }
+
+        var latestFile = new DirectoryInfo(logsDirectory)
+            .GetFiles("*.txt")
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .FirstOrDefault();
+
+        if (latestFile is null)
+        {
+            return new List<string>();
+        }
+
+        using var stream = new FileStream(latestFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+
+        var allLines = new List<string>();
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            allLines.Add(line);
+        }
+
+        return allLines.TakeLast(MaxLines).ToList();
+    }
+}

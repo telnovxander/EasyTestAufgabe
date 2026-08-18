@@ -4,6 +4,7 @@ using EasyTestAufgabe.Application.Dtos;
 using EasyTestAufgabe.Domain.Entities;
 using EasyTestAufgabe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EasyTestAufgabe.Application.Services;
 
@@ -13,10 +14,12 @@ namespace EasyTestAufgabe.Application.Services;
 public class TimeEntryService : ITimeEntryService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<TimeEntryService> _logger;
 
-    public TimeEntryService(AppDbContext context)
+    public TimeEntryService(AppDbContext context, ILogger<TimeEntryService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<Result<List<TimeEntryDto>>> GetByTaskIdAsync(int taskItemId)
@@ -62,6 +65,10 @@ public class TimeEntryService : ITimeEntryService
         _context.TimeEntries.Add(entry);
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation(
+            "Zeiteintrag angelegt: Id={TimeEntryId}, TaskItemId={TaskItemId}, DurationMinutes={DurationMinutes}",
+            entry.Id, entry.TaskItemId, entry.DurationMinutes);
+
         return Result<int>.Success(entry.Id);
     }
 
@@ -75,6 +82,8 @@ public class TimeEntryService : ITimeEntryService
 
         _context.TimeEntries.Remove(entry);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Zeiteintrag gelöscht: Id={TimeEntryId}", id);
 
         return Result.Success();
     }
